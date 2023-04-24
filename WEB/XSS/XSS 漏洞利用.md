@@ -188,4 +188,4 @@ if( isset( $_POST[ 'btnSign' ] ) ) {
 `htmlspecialchars()`函数把预定义的字符&、"、'、<、>转换为 HTML 实体，防止浏览器将其作为HTML元素 。
 一顿操作对message输入内容进行检测过滤，因此无法再通过message参数注入XSS代码。
 
-但我们还可以通过 Name 属性插入代码。
+但我们还可以通过 Name 属性插入代码。   123
