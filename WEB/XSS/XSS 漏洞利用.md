@@ -2,9 +2,9 @@
 ## DVWA
 ` 靶场版本：v1.10 *Development*
 
-### Low
+### XSS (Reflected)
 
-#### XSS (Reflected)
+#### Low
 
 **分析**
 
@@ -20,52 +20,11 @@ Low 等级 DVWA 未对输入参数做出处理
 
 ![](../../image/Pasted%20image%2020230424181907.png)
 
-
-#### XSS (DOM)
-
-**分析**
-
-一个单选框，点击 select 按钮会发起一个Get 请求，参数为选中的内容
-
-![](../../image/Pasted%20image%2020230424182342.png)
-
-寻找参数在网页上渲染的位置，将参数值修改为 1
-
-\http://192.168.127.200/DVWA/vulnerabilities/xss_d/?default=1
-
-![](../../image/Pasted%20image%2020230424183649.png)
-
-接下来的思路为输入 payload ，插入我们的利用代码
-
-**利用**
-
-payload：
-
-\http://192.168.127.200/DVWA/vulnerabilities/xss_d/?default=english\<script>alert('donkeyQian')\</script>
-
-![](../../image/Pasted%20image%2020230424190320.png)
-
-#### XSS (Stored)
+#### Mid
 
 **分析**
 
-一个文本输入框，可以将用户的输入渲染到页面上
-
-![](../../image/Pasted%20image%2020230424190637.png)
-
-利用方式和前面两种类似，将payload 输入即可
-
-**利用**
-
-![](../../image/Pasted%20image%2020230424190929.png)
-
-### Mid
-
-#### XSS (Reflected)
-
-**分析**
-
-将 low 登记的 payload 输入，发现 \<script> 标签被过滤，应该是后端使用了黑名单策略，将敏感词汇替换了。查看源代码，发现是将 script 这个标签替换掉了
+将 low 登记的 payload 输入，发现 `<script>` 标签被过滤，应该是后端使用了黑名单策略，将敏感词汇替换了。查看源代码，发现是将 script 这个标签替换掉了
 
 ```php
 `<?php      
@@ -80,17 +39,43 @@ if( array_key_exists( "name", $_GET ) && $_GET[ 'name' ] != NULL ) {
 ?>`
 ```
 
-但是 str_replace() 这个函数式区分大小写的，因此我们只需要将 \<script> 修改为 \<Script> 就能绕过这个规则。
+但是 str_replace() 这个函数式区分大小写的，因此我们只需要将 `<script>` 修改为 `<Script>` 就能绕过这个规则。
 
 **利用**
 
-payload：\<script>alert(1)\</script>
+payload：`<script>alert(1)\</script>`
 
-#### XSS (DOM)
+### XSS (DOM)
+
+#### Low
 
 **分析**
 
-将 low 等级的 payload 输入，发现网站把我们重定向到了原网页，并且将我们的参数修改为 English，查看源代码，发现是后端做了一个查找 \<script> 标签的判断，如果输入中存在 这个标签，那么直接重定向到原网页，且参数为 english
+一个单选框，点击 select 按钮会发起一个Get 请求，参数为选中的内容
+
+![](../../image/Pasted%20image%2020230424182342.png)
+
+寻找参数在网页上渲染的位置，将参数值修改为 1
+
+`http://192.168.127.200/DVWA/vulnerabilities/xss_d/?default=1`
+
+![](../../image/Pasted%20image%2020230424183649.png)
+
+接下来的思路为输入 payload ，插入我们的利用代码
+
+**利用**
+
+payload：
+
+`http://192.168.127.200/DVWA/vulnerabilities/xss_d/?default=english\<script>alert('donkeyQian')\</script>`
+
+![](../../image/Pasted%20image%2020230424190320.png)
+
+#### Mid
+
+**分析**
+
+将 low 等级的 payload 输入，发现网站把我们重定向到了原网页，并且将我们的参数修改为 English，查看源代码，发现是后端做了一个查找` <script>` 标签的判断，如果输入中存在 这个标签，那么直接重定向到原网页，且参数为 english
 
 **![](../../image/Pasted%20image%2020230424193809.png)
 
@@ -121,13 +106,31 @@ payload: \http://192.168.127.200/DVWA/vulnerabilities/xss_d/?default=English\</o
 
 ![](../../image/Pasted%20image%2020230424195045.png)
 
-这里提供一些常见的替换 script 标签的思路：
+这里提供一些常见的绕过黑名单的思路：
 
-1. \<img src='1' onerror='alert(1)' style="display:none">
-2. \<iframe src="javascript:alert(1)">
+1. `<img src='1' onerror='alert(1)' style="display:none">`
+2. `<iframe src="javascript:alert(1)">`
+3. `<scr<script>ipt>alert(document.cookie)</script>`
+4. ...
 
 
-#### XSS (Stored)
+### XSS (Stored)
+
+#### Low
+
+**分析**
+
+一个文本输入框，可以将用户的输入渲染到页面上
+
+![](../../image/Pasted%20image%2020230424190637.png)
+
+利用方式和前面两种类似，将 payload 输入即可
+
+**利用**
+
+![](../../image/Pasted%20image%2020230424190929.png)
+
+#### Mid
 
 **分析**
 
@@ -180,4 +183,9 @@ if( isset( $_POST[ 'btnSign' ] ) ) {
 ?>
 ```
 
-可以看到 DVWA Mid 等级的持久化 XSS 使用 strip_tags() 这个函数对 Message 参数进行了处理，这个函数的作用是将参数中 HTML、PHP、JS 等类型的 Tag 进行过滤。而 Name 参数只进行了黑名单过滤。
+`strip_tags()`函数剥去字符串中的 HTML、XML 以及 PHP 的标签，但允许使用`<b>`标签。  
+`addslashes()`函数返回在预定义字符（单引号、双引号、反斜杠、NULL）之前添加反斜杠的字符串。  
+`htmlspecialchars()`函数把预定义的字符&、"、'、<、>转换为 HTML 实体，防止浏览器将其作为HTML元素 。
+一顿操作对message输入内容进行检测过滤，因此无法再通过message参数注入XSS代码。
+
+但我们还可以通过 Name 属性插入代码。
