@@ -6,21 +6,22 @@
 
 #### Low
 
-> 分析
+>分析
 
 一个将输入文本输出到前端界面中的小功能，点击 Submit 按钮会发起一个 Get 请求，输入内容作为 请求参数 name 的值传输给 PHP 后端处理
 
 ![](../../image/Pasted%20image%2020230424181348.png)
 
-*利用*
+>利用
 
 Low 等级 DVWA 未对输入参数做出处理
 
 payload:  `<script>alert(document.cookie)</script>`
 
+*** 
 #### Mid
 
-==分析==
+>分析
 
 将 low 等级的 payload 输入，发现 `<script>` 标签被过滤，应该是后端使用了黑名单策略，将敏感词汇替换了。查看源代码，发现是将 script 这个标签替换掉了
 
@@ -42,10 +43,11 @@ if( array_key_exists( "name", $_GET ) && $_GET[ 'name' ] != NULL ) {
 2. 使用双写绕过，输入 `<scr<script>ipt>alert(document.cookie)</script>`
 3. 输入其他标签，如 `<IMG src=1 onerror=alert(document.cookie)>`
 
-*利用*
+>利用
 
 payload：`<script>alert(document.cookie)</script>`
 
+***
 #### High
 
 
