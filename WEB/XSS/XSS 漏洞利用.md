@@ -124,3 +124,6 @@ payload: \http://192.168.127.200/DVWA/vulnerabilities/xss_d/?default=English\</o
 
 1. \<img src='1' onerror='alert(1)' style="display:none">
 2. \<iframe src="javascript:alert(1)">
+
+
+1231231
