@@ -118,6 +118,7 @@ stripos() 这个函数是不区分大小写的，所以修改大小写的策略�
 payload: \http://192.168.127.200/DVWA/vulnerabilities/xss_d/?default=English\</option>\</select>\<img src=1 onerror="alert(1)"  style="display:none"/>
 
 这里将 option 标签和 select 标签提前闭合的原因是这两个标签中不能放 img 标签，所以我人为将他们闭合，并插入 img 标签
+
 ![](../../image/Pasted%20image%2020230424195045.png)
 
 这里提供一些常见的替换 script 标签的思路：
@@ -126,4 +127,57 @@ payload: \http://192.168.127.200/DVWA/vulnerabilities/xss_d/?default=English\</o
 2. \<iframe src="javascript:alert(1)">
 
 
-1231231
+#### XSS (Stored)
+
+**分析**
+
+将 low 等级的 payload 输入，发现输出内容少了 script 标签，猜测应该也是使用了黑名单检测，尝试使用大写的 Script 绕过，无效，后续尝试在 Message 这一栏中输入了多种 HTML 标签绕过方式，都无效。
+
+将 payload 注入的目标改为 Name 这一栏，发现前端对这个输入框做了长度限制，要解决这个问题一般有两种思路：
+1. 在前端禁用限制
+	1. 如果是在 HTML 代码中加的限制，直接在浏览器修改即可
+	2. 如果是用 JS 代码做的限制，那么可以在浏览器禁用 JS
+2. 抓包，在 HTTP 请求中修改参数
+
+这两种方式能绕过前端对参数的限制，但是如果程序员在程序后端也加了校验就没办法了。
+
+**利用**
+
+抓包，修改 Name 的参数为 \<Script>alert(1)\</script>
+
+![](../../Pasted%20image%2020230425000602.png)
+
+成功，利用这种方式也可以注入其他 payload
+
+![](../../Pasted%20image%2020230425001108.png)
+
+**源代码**
+
+```php
+<?php
+
+if( isset( $_POST[ 'btnSign' ] ) ) {
+    // Get input
+    $message = trim( $_POST[ 'mtxMessage' ] );
+    $name    = trim( $_POST[ 'txtName' ] );
+
+    // Sanitize message input
+    $message = strip_tags( addslashes( $message ) );
+    $message = ((isset($GLOBALS["___mysqli_ston"]) && is_object($GLOBALS["___mysqli_ston"])) ? mysqli_real_escape_string($GLOBALS["___mysqli_ston"],  $message ) : ((trigger_error("[MySQLConverterToo] Fix the mysql_escape_string() call! This code does not work.", E_USER_ERROR)) ? "" : ""));
+    $message = htmlspecialchars( $message );
+
+    // Sanitize name input
+    $name = str_replace( '<script>', '', $name );
+    $name = ((isset($GLOBALS["___mysqli_ston"]) && is_object($GLOBALS["___mysqli_ston"])) ? mysqli_real_escape_string($GLOBALS["___mysqli_ston"],  $name ) : ((trigger_error("[MySQLConverterToo] Fix the mysql_escape_string() call! This code does not work.", E_USER_ERROR)) ? "" : ""));
+
+    // Update database
+    $query  = "INSERT INTO guestbook ( comment, name ) VALUES ( '$message', '$name' );";
+    $result = mysqli_query($GLOBALS["___mysqli_ston"],  $query ) or die( '<pre>' . ((is_object($GLOBALS["___mysqli_ston"])) ? mysqli_error($GLOBALS["___mysqli_ston"]) : (($___mysqli_res = mysqli_connect_error()) ? $___mysqli_res : false)) . '</pre>' );
+
+    //mysql_close();
+}
+
+?>
+```
+
+可以看到 DVWA Mid 等级的持久化 XSS 使用 strip_tags() 这个函数对 Message 参数进行了处理，这个函数的作用是将参数中 HTML、PHP、JS 等类型的 Tag 进行过滤。而 Name 参数只进行了黑名单过滤。
