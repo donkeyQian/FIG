@@ -148,11 +148,11 @@ payload: \http://192.168.127.200/DVWA/vulnerabilities/xss_d/?default=English\</o
 
 抓包，修改 Name 的参数为 \<Script>alert(1)\</script>
 
-![](../../Pasted%20image%2020230425000602.png)
+![](../../image/Pasted%20image%2020230425000602.png)
 
 成功，利用这种方式也可以注入其他 payload
 
-![](../../Pasted%20image%2020230425001108.png)
+![](../../image/Pasted%20image%2020230425001108.png)
 
 **源代码**
 
