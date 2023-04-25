@@ -8,7 +8,7 @@
 
 >分析
 
-一个将输入文本输出到前端界面中的小功能，点击 Submit 按钮会发起一个 Get 请求，输入内容作为 请求参数 name 的值传输给 PHP 后端处理
+一个将输入文本输出到前端界面中的小功能，点击 Submit 按钮会发起一个 Get 请求，输入内容作为请求参数 name 的值传输给 PHP 后端处理
 
 ![](../../image/Pasted%20image%2020230424181348.png)
 
@@ -334,7 +334,7 @@ if( isset( $_POST[ 'btnSign' ] ) ) {
 ***
 #### High
 
-> 分析
+>分析
 
 经过 Mid 等级的测试，发现无法通过 message 参数输入 payload，因此，还是尝试通过 Name 参数注入 payload。这次，我们不使用抓包，尝试通过修改 HTML 破解对 Name 参数长度的限制。使用浏览器的审查元素功能，将 Name 输入框的 maxlength 属性值修改为较大的数字或者直接删除这个属性。
 
@@ -344,7 +344,7 @@ if( isset( $_POST[ 'btnSign' ] ) ) {
 
 尝试使用大写绕过和双写绕过，无效。尝试其他标签绕过，成功！
 
-> 利用
+> 》利用
 
 payload：`<img src="1" onerror="alert(document.cookie)" style="display:none">`
 
@@ -421,4 +421,216 @@ generateSessionToken();
 在Impossible代码中同样对 name 参数使用`htmlspecialchars()`函数,还加入了`Anti-CSRF token`，防止结合csrf攻击。
 
 但是如果htmlspecialchars函数使用不当，攻击者就可以通过编码的方式绕过函数进行XSS注入，尤其是DOM型的XSS。
+
+*** 
+## Pikachu
+
+### 反射型xss（get）
+
+> 分析
+
+一个文本输入框，点击之后会发送一个 Get 请求，将你的输入嵌入到文本再输出到前端页面上
+
+![](../../image/Pasted%20image%2020230425165254.png)
+
+前端 HTML 对这个输入框做了最大长度的限制，值为 20，但是这是一个Get 请求，我们不需要抓包或者修改 HTML，直接在浏览器的 url 栏修改参数即可。
+
+测试了一下，后端也没有对参数做限制。
+
+>利用
+
+payload: `http://192.168.127.200:9000/vul/xss/xss_reflected_get.php?message=%3Cscript%3Ealert(document.cookie)%3C/script%3E&submit=submit`
+
+***
+### 反射型xss（post）
+
+>分析
+
+一个比较经典的登录表单提交功能，点击login 提交表单数据
+
+![](../../image/Pasted%20image%2020230425165650.png)
+
+尝试了半天，发现这个登录的功能好像好像也没有把我输入的东西渲染到页面上啊？点了一下提示，系统让我登录，用了 XSS 后台提供的账号密码登录，显示登陆成功，然后出现了一个和 Get 请求同父异母的界面。
+
+![](../../image/Pasted%20image%2020230425171854.png)
+
+这里利用的思路跟前面的是一样的
+
+>利用
+
+payload: `<script>alert(document.cookie)</script>`
+
+***
+### 存储型xss
+
+>分析
+
+一个留言板功能，点击 submit 按钮发送一个 post 请求，将你填写的参数传递给后端。这类业务的流程一般是：后端再将数据存进数据库，再返回数据库中的所有留言。
+
+输入前文使用的 payload
+
+![](../../image/Pasted%20image%2020230425172146.png)
+
+>利用
+
+payload: `<script>alert(document.cookie)</script>`
+
+***
+### Dom型xss
+
+>分析
+
+还是一个输入框和一个按钮，随便输入点东西，点击按钮之后，出现了一个 a 标签。
+
+![](../../image/Pasted%20image%2020230425172957.png)
+
+打开浏览器的审查元素功能，查看这个按钮做了什么，发现他执行了一个 js 函数，函数的源代码如下：
+
+```js
+function domxss(){
+	var str = document.getElementById("text").value;
+	document.getElementById("dom").innerHTML = "<a href='"+str+"'>what do you see?</a>";
+	}
+	//试试：'><img src="#" onmouseover="alert('xss')">
+	//试试：' onclick="alert('xss')">,闭合掉就行            
+```
+
+作者还在这里贴心的加了几行注释，可以看到这个函数式没有对数据进行过滤或者编码操作的，直接将我们的输入内容作为 a 标签的 href 属性。所以我们直接将 payload 输入提交即可。
+
+>利用
+
+这种注入点为 HTML 标签属性值的漏洞，我的思路如下：
+1. 本题直接输出到 href 属性，因此可以直接用 javascript 的伪链接
+2. 如果输出点是 type 这种无法直接利用的属性，我们可以使用引号将它人为闭合，添加上其他更好利用的属性，如 href，onerror，src，onmouseover ...
+
+payload: 
+* `javascript:alert(document.cookie)`
+* `' onclick='alert(document.cookie)`
+* `' onmouseover='alert(document.cookie)`
+
+***
+### DOM型xss-x
+
+>分析
+
+这个关卡基本上就是上面那道题套了一层娃，本来参数是直接从文本框拿的，但是这次点击按钮之后会发送一个 Get 请求，然后生成一个 a 标签，你要再点击一次 a 标签，才能触发 js 函数，生成带 payload 的 a 标签。
+
+js源码：
+```js
+function domxss(){
+	var str = window.location.search;
+	var txss = decodeURIComponent(str.split("text=")[1]);
+	var xss = txss.replace(/\+/g,' ');
+	// alert(xss);
+	
+	document.getElementById("dom").innerHTML = "<a href='"+xss+"'>就让往事都随风,都随风吧</a>";
+}
+	//试试：'><img src="#" onmouseover="alert('xss')">
+	//试试：' onclick="alert('xss')">,闭合掉就行            
+```
+
+>利用
+
+payload: 
+* `javascript:alert(document.cookie)`
+* `' onclick='alert(document.cookie)`
+* `' onmouseover='alert(document.cookie)`
+
+***
+### xss盲打
+
+>分析
+
+一个内容提交页面，点击提交按钮会发起一个 Post 请求，尝试提交一个稀奇古怪的内容，然后在 HTML文档中搜索，找不到。这道题也没有调用前端JS 函数的内容，推测应该是一个存储型 XSS 攻击。
+
+输入 payload，提交。看了一下这道题的提示，他让我登陆一下网站的后台，看来应该是后台输出了我们提交的内容到页面上。
+
+![](../../image/Pasted%20image%2020230425181500.png)
+
+>利用
+
+打开链接：http://192.168.127.200:9000/vul/xss//xssblind/admin.php
+输入： admin/123456
+
+payload: `<script>alert(document.cookie)</script>`
+
+果不其然，输出了我们输入的 payload
+
+![](../../image/Pasted%20image%2020230425182010.png)
+
+***
+### xss之过滤
+
+>分析
+
+一个文本输入框，点击 submit 将内容通过一个 Get 请求传递给后端。
+
+![](../../image/Pasted%20image%2020230425182551.png)
+
+将无敌的 `<script>alert(1)</script>` 输入，输出一个 >，猜测应该是黑名单+替换策略，尝试使用大小写和双写绕过，无效。尝试使用其他 HTML 标签输入 payload，成功。
+
+>利用
+
+payload: `<img src="1" onerror="alert(document.cookie)" style="display:none">`
+
+![](../../image/Pasted%20image%2020230425183002.png)
+
+*** 
+### xss之htmlspecialchars
+
+>分析
+
+还是一个表单，点击 submit 发送 Get 请求，这道题考的应该是绕过编码的能力。
+
+![](../../image/Pasted%20image%2020230425183356.png)
+
+输入 `<script>alert(1)</script>`，提交，后端返回一个新的页面，下方多了一个 a 标签，其中标签的值为我们输入的参数，href 属性值为经过 HTML 编码之后的内容。
+
+搜索 `htmlspecialchars()` ，发现这个函数的作用是返回某些特殊字符经过 HTML 编码后的内容，而且单引号和双引号在某些配置的情况下不会被编码。
+
+![](../../image/Pasted%20image%2020230425235336.png)
+
+在输入框中分别输入 " 和 '，发现输入单引号时，href 属性被闭合，后端没有采用转义 ' 的策略，可以利用这一点注入恶意代码。
+
+而且这道题由于注入的位置是 a 标签的 href 属性，我们可以直接使用 `javascript:alert(1)` 这样的伪链接，这些字符不包含特殊字符，不会被编码成 HTML 实体。
+
+>利用
+
+payload: 
+* `javascript:alert(document.cookie)`
+* `' onmouseover='alert(document.cookie)'`
+
+***
+### xss之href输出
+
+>分析
+
+一个文本输入框，点击 submit 发起一个 Get 请求，将你填写的参数值发送给后端，后端返回一个新的页面，新增一个 a标签，你填写的参数作为 a 标签的 href 属性
+
+![](../../image/Pasted%20image%2020230426005030.png)
+
+利用的思路还是使用伪链接。
+
+>利用
+
+payload: `javascript:alert(document.cookie)`
+
+***
+### xss之js输出
+
+> 分析
+
+一个文本输入框，点击 submit 发送一个 Get 请求。发现页面除了多出一行字外没什么反应。
+
+![](../../image/Pasted%20image%2020230426010351.png)
+
+在浏览器审查元素中查找刚才输入的内容。
+
+![](../../image/Pasted%20image%2020230426010411.png)
+
+发现刚才输入的内容被用在了一段 js 代码中，利用的思路是闭合赋值语句，将我们想添加的代码加在后面，当然也可以直接闭合 `<script>`，如果你的 payload 需要这样做才能生效的话。
+
+>利用
+
+payload: `tmac'; document.location='http://www.baidu.com`
 
