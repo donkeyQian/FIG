@@ -442,7 +442,7 @@ DVWA 的扫描结果如下，设置的扫描深度为三级，也是什么都没
 
 [lwzSoviet/NoXss: Faster xss scanner,support reflected-xss and dom-xss (github.com)](https://github.com/lwzSoviet/NoXss)
 
-Noxss 是一个高效的 XSS 扫描器，这里贴一下官方文档给出的软件特性中文翻译：
+Noxss 是一个 payload 只有 8 个的高效 XSS 扫描器，这里贴一下官方文档给出的软件特性中文翻译：
 
 * 快速，适合测试数以百万计的url
 * 支持基于dom的xss(使用Chrome或Phantomjs)和反射xss
@@ -604,7 +604,7 @@ optional arguments:
 
 介绍一些常用的命令：
 - -u --url    指定扫描目标，`-u "www.target.com/?name=donkeyQian"`
-- -f --file    指定扫描目标集合的文本文件
+- -f --file    指定扫描目标集合的文本文件 `-f "../urls.txt"`
 
 ### 靶场试验
 
@@ -657,8 +657,8 @@ http://192.168.127.200:9000/vul/xss/xss_04.php?message=payload&submit=submit
 	- 从他没有 trike 那样的 `--data` 选项就猜到了，最后看了源码才确认，源码过滤 url 的逻辑是如果 url 里面没有 ? 那就直接筛掉，如果你硬要给 post 方法后面加个 ? 也可以，但没有传参数的地方还是白瞎
 - 不支持比较复杂的漏洞类型
 	- 反射型 xss 的识别率比较高，其他两种基本随缘
-- 漏 url
-	- 批量扫描之后，软件会在你的 url 文件的目录生成一个 `.filtered` 的文本文件，通过这个文件可以查看这次批量查询扫了多少 url
+- 漏扫 url
+	- 批量扫描之后，软件会在你的 url 文件的目录生成一个 `.filtered` 的文本文件，通过这个文件可以查看这次批量检测扫了多少 url
 	- 这个问题不知道是 bug 还是软件的机制，noxss 会把 url 路径部分的最后一截通过正则表达式生成一段字符类型的字符串，然后把这段字符串跟 url 和请求参数拼接生成一段 api 字符串，最后根据这段 api 字符串去重生成待检测 url 列表
 	- 举例：
 		- `http://.../xss_01.php?message=payload&submit=submit`
