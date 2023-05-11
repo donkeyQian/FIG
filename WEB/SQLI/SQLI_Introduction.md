@@ -6,10 +6,10 @@
 
 用人话来说就是应用程序将攻击者的恶意代码与SQL 语句拼接在一起解析、执行，导致程序执行了超出预期的 SQL 操作。
 
-举个栗子
-	原SQL：`SELECT * FROM users WHERE id='$id' LIMIT 0,1`
-	payload：`1' or 1=1 -- `
-	数据库最终执行的SQL：`SELECT * FROM users WHERE id='1' or 1=1 -- ' LIMIT 0,1`
+举个栗子：
+原SQL：`SELECT * FROM users WHERE id='$id' LIMIT 0,1`
+payload：`1' or 1=1 -- `
+数据库最终执行的SQL：`SELECT * FROM users WHERE id='1' or 1=1 -- ' LIMIT 0,1`
 
 > SQL 注入能做什么？
 
