@@ -1,6 +1,7 @@
 ## 安装和配置
 
 Git 官网：[Git (git-scm.com)](https://git-scm.com/)
+这是我在 github 线上修改的内容
 
 安装完之后可以使用 `git -v` 命令查看当前 git 版本，测试是否安装成功。
 
