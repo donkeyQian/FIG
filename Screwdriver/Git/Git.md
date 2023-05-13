@@ -1,7 +1,6 @@
 ## 安装和配置
 
 Git 官网：[Git (git-scm.com)](https://git-scm.com/)
-这是我在本地添加的内容
 
 安装完之后可以使用 `git -v` 命令查看当前 git 版本，测试是否安装成功。
 
@@ -190,4 +189,5 @@ git 提供了两个切换分支的方式：
 
 `git branch -d [branchName]` 命令可以删除已合并的分支
 `git branch -D [branchName]` 命令可以强制删除未合并的分支
+
 
